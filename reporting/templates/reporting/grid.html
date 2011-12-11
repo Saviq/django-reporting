@@ -1,0 +1,88 @@
+{% extends "reporting/report.html" %}
+{% load i18n humanize report %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}reporting/css/cross_grid.css" />
+{% endblock extrastyle %}
+
+{% block report %}
+          <div class="results">
+            <table>
+                <thead>
+                {% for header in report.get_headers %}
+                <tr>
+                    {% ifequal forloop.counter 1 %}
+                        <th>&nbsp;</th>
+                        {% for head in header %}
+                            {% ifequal forloop.counter report.row_headers|length|add:1 %}
+                                {# top object header #}
+                                <{{ head.tag }} class="{{ head.css_class|join:" " }} center" colspan="{{ report.column_results|length }}">
+                                    {{ head.contents }}
+                                </{{ head.tag }}>
+                            {% else %}
+                                {# general headers #}
+                                <{{ head.tag }} class="{{ head.css_class|join:" " }}">
+                                    {{ head.contents }}
+                                </{{ head.tag }}>
+                            {% endifequal %}
+                        {% endfor %}
+                    {% else %}
+                        {% for head in header %}
+                            <{{ head.tag }} class="{{ head.css_class|join:" " }}">
+                                {{ head.contents }}
+                            </{{ head.tag }}>
+                            {% if forloop.parentloop.counter == 2 and forloop.counter == 1 %}
+                                {# cross-spanner #}
+                                <th rowspan="{{ report.column_headers|length }}" colspan="{{ report.row_headers|length }}">&nbsp;</th>
+                            {% endif %}
+                        {% endfor %}
+                    {% endifequal %}
+                    {% ifequal forloop.counter 2 %}
+                        {# post-spanner #}
+                        <th rowspan="{{ report.column_headers|length }}" colspan="{{ report.column_post_header_count }}">&nbsp;</th>
+                    {% endifequal %}
+                </tr>
+                {% endfor %}
+                </thead>
+                {% for row in report.get_rows %}
+                    {% if forloop.counter0|divisibleby:report.cell_values_count or forloop.counter > report.values_row_count %}
+                        <tr class="{% cycle "row1" "row2" as row_class %}">
+                    {% else %}
+                        <tr class="{{ row_class }} post-span">
+                    {% endif %}
+                    {% for cell in row %}
+                        {% if forloop.parentloop.first and forloop.first %}
+                            {# left object header #}
+                            <{{ cell.tag }} class="{{ cell.css_class|join:" "}}" rowspan="{{ report.values_row_count }}">{{ cell.contents }}</{{ cell.tag }}>
+                        {% else %}
+                            {% if forloop.first and forloop.parentloop.counter > report.values_row_count %}
+                                {# column annotation headers #}
+                                <{{ cell.tag }}>{{ cell.contents }}</{{ cell.tag }}>
+                            {% else %}
+                                {% if cell %}
+                                    {% if cell.span %}
+                                        <{{ cell.tag }} class="{{ cell.css_class|join:" "}}" rowspan="{{ report.cell_values_count }}">{{ cell.contents }}</{{ cell.tag }}>
+                                    {% else %}
+                                        <{{ cell.tag }} class="{{ cell.css_class|join:" "}}">{{ cell.contents }}</{{ cell.tag }}>
+                                    {% endif %}
+                                {% else %}
+                                    <td class="empty">&nbsp;</td>
+                                {% endif %}
+                            {% endif %}
+                        {% endif %}
+                        {% if forloop.parentloop.counter > report.values_row_count and forloop.first %}
+                            <th  colspan="{{ report.row_headers|length }}">&nbsp;</th>
+                        {% endif %}
+                        {% if report.row_aggregate and forloop.parentloop.last and forloop.first %}
+                            <td  colspan="{{ report.column_results|length }}">&nbsp;</td>
+                        {% endif %}
+                        {% if report.column_aggregate and forloop.parentloop.first and forloop.last %}
+                            <td  rowspan="{{ report.values_row_count }}">&nbsp;</td>
+                        {% endif %}
+                    {% endfor %}
+                    </tr>
+                {% endfor %}
+            </table>
+        </div>
+{% endblock report %}

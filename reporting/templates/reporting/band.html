@@ -1,0 +1,43 @@
+{% extends "reporting/report.html" %}
+{% load i18n report %}
+
+{% block report %}
+          <div class="results">
+            <table>
+                <thead>
+                <tr>
+                {% for head in report.get_headers %}
+                    <th class="{{head.css_class}}"><a href="{{head.url}}">{{head.text}}</a></th>
+                {% endfor %}
+                </tr>
+                </thead>
+            {% for row in report.results %}
+                <tr class="{% cycle 'row1' 'row2' as rowclass %}">
+                    {% for value in row.values %}<td>{{value}}</td>{% endfor %}
+                </tr>
+            {% if row.details %}
+                <thead>
+                <tr class="{{ rowclass }}">
+                    <td style="border-bottom: 0px;"></td>
+                    {% for col in report.get_details_headers %}<th>{{col}}</th>{% endfor %}
+                </tr>
+                </thead>
+                {% for details_row in row.details %}
+                <tr class="{{ rowclass }}">
+                    <td style="border-bottom: 0px;"></td>
+                    {% for value in details_row %}<td>{{value}}</td>{% endfor %}
+                </tr>
+                {% endfor %}
+            {% endif %}
+            {% endfor %}
+            {% if report.aggregate %}
+            <tr>
+                <td colspan="{{ report.group_count }}">&nbsp;</td>
+                {% for title, value in report.get_aggregation %}
+                    <td><strong>{{title}}: {{value}}</strong></td>
+                {% endfor %}
+            </tr>
+            {% endif %}
+            </table>
+        </div>
+{% endblock report %}

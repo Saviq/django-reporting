@@ -1,37 +1,34 @@
-{% extends "admin/base_site.html" %}
-{% load adminmedia admin_list i18n %}
+{% extends "admin/change_list.html" %}
+{% load i18n report_list %}
 
-{% block extrastyle %}
-  <link rel="stylesheet" type="text/css" href="{% admin_media_prefix %}css/changelists.css" />
-{% endblock %}
+{% block title %}{% trans "Reports" %}{% endblock %}
+{% block content_title %}<h1>{% trans "Reports" %}</h1>{% endblock %}
 
-
-{% block bodyclass %}change-list{% endblock %}
-
-
+<!-- BREADCRUMBS -->
 {% block breadcrumbs %}
-<div class="breadcrumbs">
-     <a href="/admin/">{% trans "Home" %}</a> &rsaquo;
-     Reports 
-
-</div>
+    {% if not is_popup %}
+        <div id="breadcrumbs">
+            <a href="../../">{% trans "Home" %}</a> &rsaquo;
+            {% trans "Reports" %}
+        </div>
+    {% endif %}
 {% endblock %}
 
-
+<!-- OBJECT-TOOLS -->
+{% block object-tools %}{% endblock %}
 
 {% block content %}
-  <div id="content-main">
-    {% block object-tools %}{% endblock %}
-    
     <div id="changelist">
-
-		<H2>Reports</H2>
-      
-      <div id="changelist"
-			{% for slug, report in reports %}
-				<a href="{% url reporting-view slug %}">{{report.verbose_name}}</a><br>
-			{% endfor %}
-	  </div>
-    </div>
-  </div>
+        {% get_report_groups as groups %}
+        {% for group, reports in groups %}
+            {% trans group|title %}<br />
+            <ul>
+            {% for slug, report in reports.items %}
+                <li><a href="{% url reporting-view slug %}{{ report.get_default_query_string }}">{{ report.verbose_name }}</a></li>
+            {% endfor %}
+            </ul>
+        {% empty %}
+            {% trans "No reports available." %}
+        {% endfor %}
+	</div>
 {% endblock %}

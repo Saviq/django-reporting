@@ -1,0 +1,49 @@
+{% extends "reporting/report.html" %}
+{% load i18n report %}
+
+{% block report %}
+          <div class="results">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="{{head.css_class}}" colspan="{{report.header_count}}">{{ report.selected_group_by_title }}</th>
+                    </tr>
+                </thead>
+            {% for row in report.results %}
+                <tr class="{% cycle 'row1' 'row2' as rowclass %}">
+                    <td colspan="{{ report.header_count }}" style="text-align: left;"><strong>{{ row.values|slice:report.group_slice|join:", " }}</strong></td>
+                </tr>
+            {% if row.details %}
+                <thead>
+                <tr class="{{ rowclass }}">
+                    <td style="border-bottom: 0px;"></td>
+                    {% for col in report.get_details_headers %}<th>{{col}}</th>{% endfor %}
+                </tr>
+                </thead>
+                {% for details_row in row.details %}
+                <tr class="{{ rowclass }}">
+                    <td style="border-bottom: 0px;"></td>
+                    {% for value in details_row %}<td>{{value}}</td>{% endfor %}
+                </tr>
+                {% endfor %}
+                    <tr class="{{ rowclass }}">
+                        <td colspan="{{ report.details_count }}">&nbsp;</td>
+                        {% for value in row.values %}
+                            {% if forloop.counter > report.group_count %}
+                                <td><strong>{{value}}</strong></td>
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+            {% endif %}
+            {% endfor %}
+            {% if report.aggregate %}
+            <tr>
+                <td colspan="{{ report.details_count }}">&nbsp;</td>
+                {% for title, value in report.get_aggregation %}
+                    <td><strong>{{title}}: {{value}}</strong></td>
+                {% endfor %}
+            </tr>
+            {% endif %}
+            </table>
+        </div>
+{% endblock report %}

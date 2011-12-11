@@ -1,0 +1,45 @@
+{% extends "admin/base_site.html" %}
+{% load adminmedia admin_list i18n report %}
+
+{% block extrastyle %}
+  <link rel="stylesheet" type="text/css" href="{% admin_media_prefix %}css/changelists.css" />
+{% endblock %}
+
+{% block bodyclass %}change-list{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+     <a href="{% url admin:index %}">{% trans "Home" %}</a> &rsaquo;
+     <a href="{% url reporting-list %}">Reports</a> &rsaquo;
+     {{report.verbose_name}} 
+</div>
+{% endblock %}
+
+{% block content %}
+  <div id="content-main">
+    {% block object-tools %}{% endblock %}
+    
+    <div class="module{% if cl.has_filters %} filtered{% endif %}" id="changelist">
+
+      {% block filters %}
+        {% if report.group_by or report.has_filters %}
+            <div id="changelist-filter">
+              {% if report.group_by %}
+                  <h2>{% trans 'Group by' %}</h2>
+                  {% report_choices "Group by" report.group_by_choices %}
+              {% endif %}
+              {% if report.has_filters %}
+                  <h2>{% trans 'Filter' %}</h2>
+                  {% for spec in report.filter_specs %}{% admin_list_filter report spec %}{% endfor %}
+              {% endif %}
+            </div>
+        {% endif %}
+      {% endblock %}
+      
+      <div id="changelist" class="filtered">
+        {% block date_hierarchy %}{% date_hierarchy report %}{% endblock %}
+        {% block report %}{% endblock %}
+      </div>
+    </div>
+  </div>
+{% endblock content %}

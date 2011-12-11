@@ -1,20 +1,35 @@
 import imp
-from base import Report
+from base import Report, BandReport, DetailBandReport, CrossReport, \
+                 CrossGridReport, current_year, current_month
 
 
 
 _registry = {}
+_groups = {}
 
-def register(slug, klass):
+def register(slug, group, klass):
     _registry[slug] = klass
+    try:
+        _groups[group][slug] = klass
+    except KeyError:
+        _groups[group] = {slug: klass}
 
 def get_report(slug):
     try:
         return _registry[slug]
     except KeyError:
         raise Exception("No such report '%s'" % slug)
+    
+def get_group(group):
+    try:
+        return _groups[group]
+    except KeyError:
+        raise Exception("No such group '%s'" % group)
 
-def all_reports():
+def get_groups():
+    return _groups.items()
+
+def get_reports():
     return _registry.items()
 
 
