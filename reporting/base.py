@@ -142,8 +142,8 @@ class Report(object):
         qs = self.model.objects.all()
 
         lookups = {key: value for key, value in self.params.iteritems()
-                   if not key in (GROUP_BY_VAR, SORT_VAR, SORTTYPE_VAR)
-                   or not (by_date and key.startswith(self.date_hierarchy))}
+                   if not (key in (GROUP_BY_VAR, SORT_VAR, SORTTYPE_VAR)
+                           or (not by_date and key.startswith(self.date_hierarchy)))}
 
         lookups.update(self.filter)
         
@@ -375,7 +375,7 @@ class CrossReport(Report):
                           .values(*row_values)
         # order row results
         if self.order_by in self.row_headers + self.row_aliases:
-            row_results == 'desc' and row_results.order_by('-' + self.order_by) \
+            row_results = self.order == 'desc' and row_results.order_by('-' + self.order_by) \
                           or row_results.order_by(self.order_by)
 
         column_results = self.get_queryset().values(self.column) \
@@ -383,7 +383,7 @@ class CrossReport(Report):
                              .values(*column_values)
         # order column results
         if self.order_by in self.column_headers + self.column_aliases:
-            column_results == 'desc' and column_results.order_by('-' + self.order_by) \
+            column_results = self.order == 'desc' and column_results.order_by('-' + self.order_by) \
                           or column_results.order_by(self.order_by)
                                   
         cell_results = self.get_queryset().annotate(*self.cell_annotates).values(*cell_values)

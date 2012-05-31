@@ -1,6 +1,7 @@
 import imp
 from base import Report, BandReport, DetailBandReport, CrossReport, \
-                 CrossGridReport, current_year, current_month
+                 CrossGridReport, current_year, current_month, \
+                 GROUP_BY_VAR, SORTTYPE_VAR, SORT_VAR
 
 
 
