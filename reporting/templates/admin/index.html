@@ -1,79 +1,98 @@
 {% extends "admin/base_site.html" %}
+{% load i18n admin_static report_list %}
 
-<!-- LOADING -->
-{% load i18n adminmedia log report_list %}
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" type="text/css" href="{% static "admin/css/dashboard.css" %}" />{% endblock %}
 
-<!-- JAVASCRIPTS -->
-{% block javascripts %}
-    {{ block.super }}
+{% block coltype %}colMS{% endblock %}
+
+{% block bodyclass %}dashboard{% endblock %}
+
+{% block breadcrumbs %}{% endblock %}
+
+{% block content %}
+<div id="content-main">
+
+{% if app_list %}
+    {% for app in app_list %}
+        <div class="app-{{ app.app_label }} module">
+        <table>
+        <caption>
+            <a href="{{ app.app_url }}" class="section" title="{% blocktrans with name=app.name %}Models in the {{ name }} application{% endblocktrans %}">
+                {% blocktrans with name=app.name %}{{ name }}{% endblocktrans %}
+            </a>
+        </caption>
+        {% for model in app.models %}
+            <tr class="model-{{ model.object_name|lower }}">
+            {% if model.admin_url %}
+                <th scope="row"><a href="{{ model.admin_url }}">{{ model.name }}</a></th>
+            {% else %}
+                <th scope="row">{{ model.name }}</th>
+            {% endif %}
+
+            {% if model.add_url %}
+                <td><a href="{{ model.add_url }}" class="addlink">{% trans 'Add' %}</a></td>
+            {% else %}
+                <td>&nbsp;</td>
+            {% endif %}
+
+            {% if model.admin_url %}
+                <td><a href="{{ model.admin_url }}" class="changelink">{% trans 'Change' %}</a></td>
+            {% else %}
+                <td>&nbsp;</td>
+            {% endif %}
+            </tr>
+        {% endfor %}
+        </table>
+        </div>
+    {% endfor %}
+{% else %}
+    <p>{% trans "You don't have permission to edit anything." %}</p>
+{% endif %}
+</div>
 {% endblock %}
 
-<!-- COLTYPE/BODYCLASS-- >
-{% block bodyclass %}dashboard{% endblock %}
-{% block content-class %}content-grid{% endblock %}
-
-<!-- BREADCRUMBS -->
-{% block breadcrumbs %}<div id="breadcrumbs">{% trans "Home" %}</div>{% endblock %}
-{% block content_title %}{% if title %}<h1>{{ title }}</h1>{% endif %}{% endblock %}
-
-<!-- CONTENT -->
-{% block content %}
-<div class="container-grid">
-    <div class="column span-12">
-        {% if app_list %}
-            {% for app in app_list %}
-                <div class="module" id="app_{{ app.name|lower }}">
-                    <h2><a href="{{ app.app_url }}" class="section">{% trans app.name %}</a></h2>
-                    {% for model in app.models %}
-                        <div class="row">
-                            {% if model.perms.change %}<a href="{{ model.admin_url }}">{{ model.name }}</a>{% else %}<span>{{ model.name }}</span>{% endif %}
-                            <ul class="actions">
-                                <li class="add-link">{% if model.perms.add %}<a href="{{ model.admin_url }}add/">{% trans 'Add' %}</a>{% else %}&nbsp;{% endif %}</li>
-                                <li class="change-link"> {% if model.perms.change %}<a href="{{ model.admin_url }}">{% trans 'Change' %}</a>{% else %}&nbsp;{% endif %}</li>
-                            </ul>
-                       </div>
-                   {% endfor %}
-               </div>
-           {% endfor %}
-        {% else %}
-            <p>{% trans "You don´t have permission to edit anything." %}</p>
-        {% endif %}
-    </div>
-    <div class="column span-6 last">
-        <div class="module actions" id="recent-actions-module">
-            <h2>{% trans 'Recent Actions' %}</h2>
-            <div class="module">
-                <h3>{% trans 'My Actions' %}</h3>
-                {% get_admin_log 10 as admin_log for_user user %}
-                {% if not admin_log %}
-                    <p>{% trans 'None available' %}</p>
+{% block sidebar %}
+<div id="content-related">
+    <div class="module" id="recent-actions-module">
+        <h2>{% trans 'Recent Actions' %}</h2>
+        <h3>{% trans 'My Actions' %}</h3>
+            {% load log %}
+            {% get_admin_log 10 as admin_log for_user user %}
+            {% if not admin_log %}
+            <p>{% trans 'None available' %}</p>
+            {% else %}
+            <ul class="actionlist">
+            {% for entry in admin_log %}
+            <li class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %}changelink{% endif %}{% if entry.is_deletion %}deletelink{% endif %}">
+                {% if entry.is_deletion or not entry.get_admin_url %}
+                    {{ entry.object_repr }}
                 {% else %}
-                    <ul>
-                        {% for entry in admin_log %}
-                            <li class="{% if entry.is_addition %}add-link{% endif %}{% if entry.is_change %}change-link{% endif %}{% if entry.is_deletion %}delete-link{% endif %}">{% if not entry.is_deletion %}<a href="{{ entry.get_admin_url }}">{% endif %}{{ entry.object_repr }}{% if not entry.is_deletion %}</a>{% endif %}<br /><span class="mini quiet">{% filter capfirst %}{% trans entry.content_type.name %}{% endfilter %}</span></li>
-                        {% endfor %}
-                    </ul>
+                    <a href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
                 {% endif %}
-            </div>
-        </div>
-        {% get_report_groups 10 as groups %}
-        {% if groups %}
-            <div class="module actions" id="report-module">
-                <h2>{% trans 'Reports' %}</h2>
-                <div class="module">
-                    {% for group, reports in groups %}
-                        <div class="row">
-                            <span>{% trans group|title %}</span>
-                            <ul>
-                            {% for slug, report in reports.items %}
-                                <li><a href="{% url reporting-view slug %}{{ report.get_default_query_string }}">{{ report.verbose_name }}</a></li>
-                            {% endfor %}
-                            </ul>
-                        </div>
-                    {% endfor %}
-                </div>
-            </div>
-        {% endif %}
+                <br/>
+                {% if entry.content_type %}
+                    <span class="mini quiet">{% filter capfirst %}{% trans entry.content_type.name %}{% endfilter %}</span>
+                {% else %}
+                    <span class="mini quiet">{% trans 'Unknown content' %}</span>
+                {% endif %}
+            </li>
+            {% endfor %}
+            </ul>
+            {% endif %}
     </div>
+    {% get_report_groups 10 as groups %}
+    {% if groups %}
+    <div class="module actions" id="report-module">
+        <h2>{% trans 'Reports' %}</h2>
+        {% for group, reports in groups %}
+        <h3>{% trans group|title %}</h3>
+        <ul>
+        {% for slug, report in reports.items %}
+            <li><a href="{% url 'reporting-view' slug %}{{ report.get_default_query_string  }}">{{ report.verbose_name  }}</a></li>
+        {% endfor %}
+        </ul>
+        {% endfor %}
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

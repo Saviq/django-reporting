@@ -1,23 +1,11 @@
-.row1 .col2 {
-  background: none repeat scroll 0 0 #DDE3EE;
+#changelist .annotate, #changelist .aggregate {
+      font-weight: bold;
 }
 
-.row2 .col2 {
-  background: none repeat scroll 0 0 #EFEFEF;
+#changelist td {
+      text-align: center;
 }
 
-.annotate, .aggregate {
-  font-weight: bold;
-}
-
-th, td {
-  vertical-align: middle;
-}
-
-td {
-  text-align: center;
-}
-
-#changelist tr.post-span td:first-of-type {
-  border-left: 1px solid #DDDDDD;
+#changelist th {
+      vertical-align: middle;
 }

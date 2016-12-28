@@ -24,7 +24,7 @@
             {% trans group|title %}<br />
             <ul>
             {% for slug, report in reports.items %}
-                <li><a href="{% url reporting-view slug %}{{ report.get_default_query_string }}">{{ report.verbose_name }}</a></li>
+                <li><a href="{% url 'reporting-view' slug %}{{ report.get_default_query_string }}">{{ report.verbose_name }}</a></li>
             {% endfor %}
             </ul>
         {% empty %}

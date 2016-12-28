@@ -1,6 +1,6 @@
 from datetime import date
 
-from django.contrib.admin.filterspecs import FilterSpec
+from django.contrib.admin import FieldListFilter
 from django.contrib.admin.options import IncorrectLookupParameters
 from django.contrib.admin.util import get_model_from_relation,\
     get_fields_from_path, NotRelationField
@@ -11,8 +11,7 @@ from django.db.models.fields.related import RelatedField
 from django.db.models.related import RelatedObject
 from django.db.models.fields import FieldDoesNotExist
 from django.utils.text import capfirst
-from django.utils.html import escape
-from django.utils.safestring import mark_safe
+from django.utils.html import escape, format_html
 from django.utils.translation import ugettext_lazy as _
 from django.core.urlresolvers import reverse    
 from django.core.exceptions import ImproperlyConfigured
@@ -26,9 +25,13 @@ class ModelAdminMock(object):
         return self.model.objects.all()
     
 
-GROUP_BY_VAR = '_group_by'
-SORT_VAR = '_order_by'
-SORTTYPE_VAR = '_order'
+
+GROUP_VAR = 'g'
+ORDER_VAR = 'o'
+ORDER_TYPE_VAR = 'ot'
+
+IGNORED_PARAMS = (
+    GROUP_VAR, ORDER_VAR, ORDER_TYPE_VAR)
 
 
 class Cell(object):
@@ -37,7 +40,7 @@ class Cell(object):
     css_class = None
     
     def __init__(self, text, classes=()):
-        self.contents = text
+        self.contents = format_html(u'<div class="grp-text"><span>{}</span></div>', text)
         self.css_class = set(classes)
 
 class SpanCell(Cell):
@@ -50,15 +53,33 @@ class SpanHeader(Header):
     span = True
 
 class SortHeader(Header):
-    def __init__(self, text, field, report, classes=[]):
+    def __init__(self, text, field, report, classes=()):
         super(Header, self).__init__(text, classes)
         order = 'asc'
-        
+
+        self.css_class.update(('sortable',))
+
+        context = {
+                'text': text,
+                'url_remove': report.get_query_string(remove=[ORDER_VAR, ORDER_TYPE_VAR]),
+                'url_toggle': report.get_query_string({ORDER_VAR: field, ORDER_TYPE_VAR: order}),
+        }
+
         if field == report.order_by:
             order = {'asc':'desc', 'desc': 'asc'}[report.order]
-            self.css_class.update(('sorted',  '%sending' % report.order))
-        url = report.get_query_string({SORT_VAR: field, SORTTYPE_VAR: order})
-        self.contents = mark_safe('<a href="%s">%s</a>' % (url, self.contents))
+            self.css_class.update(('sorted', '%sending' % report.order))
+            context.update({
+                'order': report.order,
+                'url_toggle': report.get_query_string({ORDER_VAR: field, ORDER_TYPE_VAR: order}),
+            })
+            self.contents = format_html('<div class="grp-sortoptions">'
+                                        '<a class="grp-toggle grp-{order}ending" href={url_toggle} />'
+                                        '<a class="grp-sortremove" href="{url_remove}" />'
+                                        '</div>'
+                                        '<div class="grp-text"><a href="{url_toggle}">{text}</a></div>', **context)
+        else:
+            self.contents = format_html('<div class="grp-text"><a href="{url_toggle}">{text}</a></div>', **context)
+
 
 
 def current_year():
@@ -88,11 +109,13 @@ class Report(object):
         admin_mock = ModelAdminMock(self.model)
 
         self.params = dict(self.request.GET.items())
-        
-        self.selected_group_by = self.get_param(self.group_by, GROUP_BY_VAR)
-        
-        self.order_by = self.params.get(SORT_VAR, None)
-        self.order = self.params.get(SORTTYPE_VAR, 'asc')
+
+        self.selected_group_by = self.get_param(self.group_by, GROUP_VAR)
+
+        self.opts = self.model._meta
+
+        self.order_by = self.params.get(ORDER_VAR, None)
+        self.order = self.params.get(ORDER_TYPE_VAR, 'asc')
 
         self.filter_specs, self.has_filters = self.get_filters(admin_mock)
 
@@ -101,10 +124,14 @@ class Report(object):
 
     @property
     def query_set(self):
-        return self.get_queryset(by_date=False)        
-    
+        return self.queryset
+
+    @property
+    def queryset(self):
+        return self.get_queryset(by_date=False)
+
     def get_aggregations(self):
-        aggregates = (func(field) for field, func in self.aggregate)
+        aggregates = [func(field) for field, func in self.aggregate]
         aggregate = self.get_queryset().aggregate(*aggregates)
         
         self.aggregate_results = aggregate
@@ -113,8 +140,8 @@ class Report(object):
     def get_headers(self):
         ind = 0
         output = []
-        for field in self.selected_group_by:
-            output.append(Header(self, ind, self.get_title(field)))
+        if self.selected_group_by:
+            output.append(Header(self, ind, self.get_title(self.selected_group_by)))
             ind += 1
         for title in self.annotate_titles:
             output.append(Header(self, ind, title))
@@ -137,16 +164,21 @@ class Report(object):
                     or f == tuple(item[0]):
                         return item
         return None
-    
+
     def get_queryset(self, by_date=True):
         qs = self.model.objects.all()
 
         lookups = {key: value for key, value in self.params.iteritems()
-                   if not (key in (GROUP_BY_VAR, SORT_VAR, SORTTYPE_VAR)
+                   if not (key in IGNORED_PARAMS
                            or (not by_date and key.startswith(self.date_hierarchy)))}
 
         lookups.update(self.filter)
-        
+
+        for filter_spec in self.filter_specs:
+            new_qs = filter_spec.queryset(self.request, qs)
+            if new_qs is not None:
+                qs = new_qs
+
         return qs.filter(**lookups)
 
     def get_filters(self, model_admin):
@@ -154,14 +186,12 @@ class Report(object):
         if self.list_filter:
             for filter_name in self.list_filter:
                 field = self.get_field(filter_name)
-                spec = FilterSpec.create(field, self.request, self.params, self.model, model_admin, field_path=filter_name)
+                spec = FieldListFilter.create(field, self.request, self.params.copy(), self.model, model_admin, field_path=filter_name)
                 if spec and spec.has_output():
                     filter_specs.append(spec)
         return filter_specs, bool(filter_specs)
-    
-    def get_query_string(self, new_params=None, remove=None):
-        if new_params is None: new_params = {}
-        if remove is None: remove = []
+
+    def get_query_string(self, new_params={}, remove=[]):
         try:
             p = self.params.copy()
         except AttributeError:
@@ -188,7 +218,7 @@ class Report(object):
         for f in self.group_by:
             result.append(
                 {'selected': self.selected_group_by == f,
-                 'query_string': self.get_query_string({GROUP_BY_VAR: ",".join(self.get_lookups(f))}),
+                 'query_string': self.get_query_string({GROUP_VAR: ",".join(self.get_lookups(f))}),
                  'display': self.get_title(f)})
         return result
     
@@ -244,7 +274,7 @@ class Report(object):
        
 
 class BandReport(Report):
-    annotate = None
+    annotate = []
     aggregate = ()
     
     template_name = 'reporting/band.html'
@@ -272,7 +302,7 @@ class BandReport(Report):
     
     def header_count(self):
         return len(self.get_lookups(self.selected_group_by)) \
-               + len(self.annotations)
+               + len(self.annotates)
 
 class DetailBandReport(BandReport):
     template_name = 'reporting/band_details.html'
@@ -290,7 +320,7 @@ class DetailBandReport(BandReport):
         return [self.get_title(i) for i in self.detail_list_display]
 
     def get_details(self, row):
-        queryset = self.get_queryset().filter(**{key: row[key] for key in self.get_lookups(self.selected_group_by)})
+        queryset = self.get_queryset().filter(**{key: row["values"][key] for key in self.get_lookups(self.selected_group_by)})
         output = []
         for obj in queryset:
             item = []
@@ -311,8 +341,7 @@ class DetailBandReport(BandReport):
                 except AttributeError:
                     raise Exception("Could not resolve '%s' into value" % attr)
                 if attr in self.detail_link_fields:
-                    value = mark_safe('<a href="%s">%s</a>' % 
-                                      (self.details_url(obj), escape(value)))
+                    value = format_html('<a href="{}">{}</a>', self.details_url(obj), escape(value))
                 item.append(value)
             output.append(item)
         return output
@@ -461,7 +490,7 @@ class CrossGridReport(CrossReport):
         row_header = [SortHeader(self.get_title(field), field, self) for field in self.row_headers]
 
         # top object header
-        row_header.append(Header(self.get_title(self.column)))
+        row_header.append(Header(self.get_title(self.column), ('grp-text',)))
 
         # cross and column aggregation headers
         for field, func in self.cross_aggregate + self.row_aggregate + \

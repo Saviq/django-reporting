@@ -1,45 +1,99 @@
 {% extends "admin/base_site.html" %}
-{% load adminmedia admin_list i18n report %}
 
-{% block extrastyle %}
-  <link rel="stylesheet" type="text/css" href="{% admin_media_prefix %}css/changelists.css" />
+<!-- LOADING -->
+{% load admin_list i18n staticfiles grp_tags report %}
+
+<!-- STYLESHEETS -->
+{% block stylesheets %}
+    {{ block.super }}
+    {{ media.css }}
 {% endblock %}
 
-{% block bodyclass %}change-list{% endblock %}
+<!-- JAVASCRIPTS -->
+{% block javascripts %}
+    {{ block.super }}
+    <script type="text/javascript" charset="utf-8">
+        (function($) {
+            $(document).ready(function() {
+                grappelli.initFilter();
+            });
+        })(django.jQuery);
+    </script>
+    {{ media.js }}
+{% endblock %}
 
+<!-- COLTYPE/BODYCLASS-->
+{% block bodyclass %}grp-change-list{% endblock %}
+{% block content-class %}{% endblock %}
+
+<!-- BREADCRUMBS -->
 {% block breadcrumbs %}
-<div class="breadcrumbs">
-     <a href="{% url admin:index %}">{% trans "Home" %}</a> &rsaquo;
-     <a href="{% url reporting-list %}">Reports</a> &rsaquo;
-     {{report.verbose_name}} 
-</div>
+{% if not is_popup %}
+        <ul class="grp-horizontal-list">
+            <li><a href="{% url 'admin:index' %}">{% trans "Home" %}</a></li>
+            <li><a href="{% url 'reporting-list' %}">{% trans "Reports" %}</a></li>
+            <li>{{ report.verbose_name|capfirst }}</li>
+        </ul>
+{% endif %}
 {% endblock %}
 
-{% block content %}
-  <div id="content-main">
-    {% block object-tools %}{% endblock %}
-    
-    <div class="module{% if cl.has_filters %} filtered{% endif %}" id="changelist">
+<!-- CONTENT-TITLE -->
+{% block content_title %}
+    <h1>{{ report.verbose_name }}</h1>
+{% endblock %}
 
-      {% block filters %}
-        {% if report.group_by or report.has_filters %}
-            <div id="changelist-filter">
-              {% if report.group_by %}
-                  <h2>{% trans 'Group by' %}</h2>
-                  {% report_choices "Group by" report.group_by_choices %}
-              {% endif %}
-              {% if report.has_filters %}
-                  <h2>{% trans 'Filter' %}</h2>
-                  {% for spec in report.filter_specs %}{% admin_list_filter report spec %}{% endfor %}
-              {% endif %}
+<!-- CONTENT -->
+{% block content %}
+    {% if report.has_filters or report.group_by or report.date_hierarchy %}
+        <div class="grp-module">
+            <div class="grp-row">
+                <div class="l-2cr-fluid {% if report.group_by or report.has_filters %}l-d-6{% endif %}">
+                    {% if report.has_filters %}
+                        {% block aside %}
+                            <aside class="c-1">
+                                <header style="display:none"><h1>{% trans "Options" %}</h1></header>
+                                <!-- FILTERS -->
+                                {% if report.has_filters %}
+                                    {% block filters %}
+                                        <div id="grp-filters" class="g-d-6 g-d-l">
+                                            <div class="grp-filter">
+                                                <div class="grp-pulldown-container">
+                                                    <a href="javascript://" class="grp-button grp-pulldown-handler">{% trans 'Options' %}</a>
+                                                    <div class="grp-pulldown-content" style="display: none;">
+                                                        {% if report.group_by %}
+                                                            {% report_choices "group by" report.group_by_choices %}
+                                                        {% endif %}
+                                                        {% for spec in report.filter_specs %}{% admin_list_filter report spec %}{% endfor %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endblock %}
+                                {% endif %}
+                            </aside>
+                        {% endblock %}
+                    {% endif %}
+                    {% block pagination_top %}
+                        <div class="c-2">
+                            <!-- PAGINATION TOP -->
+                            <nav class="grp-pagination">
+                                <header style="display:none"><h1>{% trans "Pagination" %}</h1></header>
+                                <ul>
+                                    <li class="grp-results"><span>{% blocktrans with report.result_count as full_result_count %}{{ full_result_count }} total{% endblocktrans %}</span></li>
+                                </ul>
+                            </nav>
+                        </div>
+                    {% endblock %}
+
+                </div>
             </div>
-        {% endif %}
-      {% endblock %}
-      
-      <div id="changelist" class="filtered">
-        {% block date_hierarchy %}{% date_hierarchy report %}{% endblock %}
+            <!-- DATE HIERARCHY -->
+            {% block date_hierarchy %}
+                {% if report.date_hierarchy %}{% date_hierarchy report %}{% endif %}
+            {% endblock %}
+        </div>
+    {% endif %}
+    <div id="changelist" class="grp-content-container">
         {% block report %}{% endblock %}
-      </div>
     </div>
-  </div>
-{% endblock content %}
+{% endblock %}

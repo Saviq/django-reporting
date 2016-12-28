@@ -1,14 +1,14 @@
 {% extends "reporting/report.html" %}
-{% load i18n humanize report %}
+{% load i18n humanize report staticfiles %}
 
 {% block extrastyle %}
     {{ block.super }}
-    <link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}reporting/css/cross_grid.css" />
+    <link rel="stylesheet" type="text/css" href="{% static 'reporting/css/cross_grid.css' %}" />
 {% endblock extrastyle %}
 
 {% block report %}
           <div class="results">
-            <table>
+            <table class="grp-sortable">
                 <thead>
                 {% for header in report.get_headers %}
                 <tr>
@@ -47,7 +47,7 @@
                 </thead>
                 {% for row in report.get_rows %}
                     {% if forloop.counter0|divisibleby:report.cell_values_count or forloop.counter > report.values_row_count %}
-                        <tr class="{% cycle "row1" "row2" as row_class %}">
+                        <tr class="grp-row {% cycle "grp-row-even" "grp-row-odd" as row_class %}">
                     {% else %}
                         <tr class="{{ row_class }} post-span">
                     {% endif %}
