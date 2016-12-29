@@ -7,8 +7,7 @@ from django.contrib.admin.util import get_model_from_relation,\
 from django.utils.http import urlencode
 from django.utils.encoding import smart_str
 from django.db import models
-from django.db.models.fields.related import RelatedField
-from django.db.models.related import RelatedObject
+from django.db.models.fields.related import RelatedField, ManyToOneRel
 from django.db.models.fields import FieldDoesNotExist
 from django.utils.text import capfirst
 from django.utils.html import escape, format_html
@@ -228,7 +227,7 @@ class Report(object):
     def get_title_for_lookup(self, lookup):
         f = self.get_field(lookup)
         if isinstance(f, (models.ManyToManyField,
-                          models.related.RelatedObject)):
+                          models.ManyToOneRel)):
             # no direct field on this model, get name from other model
             other_model = get_model_from_relation(f)
             title = other_model._meta.verbose_name
@@ -267,7 +266,7 @@ class Report(object):
                 field = self.get_field(field_name)
             except NotRelationField:
                 continue
-            if isinstance(field, RelatedField) or isinstance(field, RelatedObject):
+            if isinstance(field, RelatedField) or isinstance(field, ManyToOneRel):
                 for result in results:
                     result[field_name] = get_model_from_relation(field).objects.get(pk=result[field_name])
         return results
