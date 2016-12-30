@@ -2,7 +2,7 @@ from datetime import date
 
 from django.contrib.admin import FieldListFilter
 from django.contrib.admin.options import IncorrectLookupParameters
-from django.contrib.admin.util import get_model_from_relation,\
+from django.contrib.admin.utils import get_model_from_relation,\
     get_fields_from_path, NotRelationField
 from django.utils.http import urlencode
 from django.utils.encoding import smart_str
